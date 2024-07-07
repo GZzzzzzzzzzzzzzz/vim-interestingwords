@@ -7,6 +7,8 @@ local m = {}
 m.words = {}
 m.colors = {}
 m.limits = {}
+m.capcity = 0
+m.next = 1
 
 local get_default_config = function()
     return {
@@ -18,6 +20,7 @@ local get_default_config = function()
         cancel_search_key = "<leader>M",
         color_key = "<leader>k",
         cancel_color_key = "<leader>K",
+        select_mode = "random", -- random or loop
     }
 end
 
@@ -27,6 +30,7 @@ local init_colors = function()
 
         api.nvim_set_hl(0, color, { bg = v, fg = 'Black' })
         m.colors[color] = 595129 + i
+        m.capcity = m.capcity + 1
     end
     m.limits.min = 595129 + 1
     m.limits.max = 595129 + #m.config.colors
@@ -75,7 +79,19 @@ local get_visual_selection = function()
     return line
 end
 
-local get_rest_color = function()
+local uncolor = function(word)
+    if m.words[word] then
+        for i = 1, fn.winnr('$') do
+            pcall(function()
+                fn.matchdelete(m.words[word].mid, i)
+            end)
+        end
+        m.colors[m.words[word].color] = m.words[word].mid
+        m.words[word] = nil
+    end
+end
+
+local get_rest_color_random = function()
     local res = {}
     for k, v in pairs(m.colors) do
         if v ~= 0 then
@@ -87,6 +103,40 @@ local get_rest_color = function()
     end
 
     return res[math.random(#res)]
+end
+
+local find_who_use_this = function(target_color)
+    for word, color in pairs(m.words) do
+        if color.color == target_color then
+            return word
+        end
+    end
+    return nil
+end
+
+local get_rest_color_loop = function()
+    if m.next > m.capcity then
+        m.next = 1
+    end
+    local color = "InterestingWord" .. m.next
+    if m.colors[color] == 0 then
+        local word = find_who_use_this(color)
+        if word ~= nil then
+            uncolor(word)
+        else
+            return nil
+        end
+    end
+    m.next = m.next + 1
+    return { color = color, mid = m.colors[color] }
+end
+
+local get_rest_color = function()
+    local selector = {
+        ["random"] = get_rest_color_random,
+        ["loop"] = get_rest_color_loop,
+    }
+    return selector[m.config.select_mode]()
 end
 
 local color = function(word)
@@ -105,18 +155,6 @@ local color = function(word)
         pcall(function()
             fn.matchadd(m.words[word].color, word, 1, m.words[word].mid, { window = i })
         end)
-    end
-end
-
-local uncolor = function(word)
-    if m.words[word] then
-        for i = 1, fn.winnr('$') do
-            pcall(function()
-                fn.matchdelete(m.words[word].mid, i)
-            end)
-        end
-        m.colors[m.words[word].color] = m.words[word].mid
-        m.words[word] = nil
     end
 end
 
