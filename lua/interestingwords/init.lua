@@ -81,7 +81,8 @@ end
 
 local uncolor = function(word)
     if m.words[word] then
-        for i = 1, fn.winnr('$') do
+        local windows = api.nvim_list_wins()
+        for _, i in ipairs(windows)  do
             pcall(function()
                 fn.matchdelete(m.words[word].mid, i)
             end)
@@ -151,7 +152,8 @@ local color = function(word)
     m.words[word].mid = color.mid
     m.colors[color.color] = 0
 
-    for i = 1, fn.winnr('$') do
+    local windows = api.nvim_list_wins()
+    for _, i in ipairs(windows)  do
         pcall(function()
             fn.matchadd(m.words[word].color, word, 1, m.words[word].mid, { window = i })
         end)
@@ -417,8 +419,9 @@ m.UncolorAllWords = function(search)
     if search then
         fn.setreg('/', '')
     else
+        local windows = api.nvim_list_wins()
         for _, v in pairs(m.words) do
-            for i = 1, fn.winnr('$') do
+            for _, i in ipairs(windows)  do
                 pcall(function()
                     fn.matchdelete(v.mid, i)
                 end)
@@ -443,7 +446,8 @@ m.setup = function(opt)
         {
             callback = function()
                 recolorAllWords()
-                for i = 1, fn.winnr('$') do
+                local windows = api.nvim_list_wins()
+                for _, i in ipairs(windows)  do
                     hide_search_count(api.nvim_win_get_buf(fn.win_getid(i)))
                 end
             end,
